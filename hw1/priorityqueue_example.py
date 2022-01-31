@@ -33,7 +33,11 @@ if __name__ == "__main__":
     q.put((0.6, 4, Node(5,2,0.6,4,1)))
 
     print("Pop elements of queue in order of increasing priority:")
-    while not q.empty():
-        next_item = q.get()
-        print("Priority:", next_item[0])
-        next_item[2].printme()
+    next_item = q.get()
+    print("Priority:", next_item[0])
+    next_item[2].printme()
+    q.get()
+    # while not q.empty():
+    #     next_item = q.get()
+    #     print("Priority:", next_item[0])
+    #     next_item[2].printme()

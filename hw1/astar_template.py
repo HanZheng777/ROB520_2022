@@ -3,6 +3,7 @@ from pybullet_tools.more_utils import get_collision_fn_PR2, load_env, execute_tr
 from pybullet_tools.utils import connect, disconnect, get_joint_positions, wait_if_gui, set_joint_positions, joint_from_name, get_link_pose, link_from_name
 from pybullet_tools.pr2_utils import PR2_GROUPS
 import time
+from queue import PriorityQueue
 ### YOUR IMPORTS HERE ###
 
 #########################
@@ -43,7 +44,7 @@ def update_config(current_config, weight_row, d_total):
 
     return config
 
-def compute_dist(neighbor, d_total, variant=2):
+def compute_neighbor_dist(neighbor, d_total, variant=2):
 
     dist = np.zeros(neighbor.shape[0])
     for i in range(len(dist)):
@@ -87,8 +88,13 @@ def main(screenshot=False):
 
     # Example of draw 
     # draw_sphere_marker((0, 0, 1), 0.1, (1, 0, 0, 1))
+
     
     start_config = tuple(get_joint_positions(robots['pr2'], base_joints))
+    # start_ponint = list(start_config[:2])
+    # start_ponint.append(0)
+    # draw_sphere_marker(tuple(start_ponint), 0.1, (1, 0, 0, 1))
+
     goal_config = (2.6, -1.3, -np.pi/2)
     path = []
     start_time = time.time()
@@ -97,58 +103,66 @@ def main(screenshot=False):
     # start_node = (0, start_config)
     dx = 0.1
     dy = 0.1
-    d_theta = np.pi/10
+    d_theta = np.pi/4
     d_total = [dx, dy, d_theta]
     variant = 2
-    open_set = {0: start_config}
-    came_from = {}
-    config_table = {}
+
+    priority = 0
+    open_set = PriorityQueue()
+    open_set.put((0, compute_h(start_config, goal_config, variant), 0))
+
+    came_from = {0: 0}
+    config_table = {0: start_config}
     node_idx = 0
     g_score = {0: 0}
     f_score = {0: compute_h(start_config, goal_config, variant)}
 
     neighbor_weight = get_neighbor_weight(variant)
-    neighbor_dist = compute_dist(neighbor_weight, d_total)
+    neighbor_dist = compute_neighbor_dist(neighbor_weight, d_total)
     num_neighbor = len(neighbor_dist)
 
 
-    while len(open_set) != 0:
+    while not open_set.empty():
 
-
-        current_idx = min(open_set, key=f_score.get)
-        current_config = open_set[current_idx]
+        priority -= 1
+        current_idx = open_set.get()[2]
+        current_config = config_table[current_idx]
 
         if current_config == goal_config:
-            path = reconstruct_path(came_from, current_config)
+            path = reconstruct_path(came_from, current_config, config_table)
             break
 
-        del(open_set[current_idx])
 
         for i in range(num_neighbor):
             node_idx += 1
-            tentative_g = g_score[current_idx] + neighbor_dist[i]
-
             if node_idx not in g_score.keys():
                 g_score[node_idx] = np.inf
 
+            tentative_g = g_score[current_idx] + neighbor_dist[i]
+            neighbor_config = update_config(current_config, neighbor_weight[i, :], d_total)
+            config_table[node_idx] = tuple(neighbor_config)
+
+            draw_position = tuple(neighbor_config[:2]) + (0,)
+
+            if collision_fn(tuple(neighbor_config)):
+                draw_sphere_marker(draw_position, 0.1, (1, 0, 0, 1))
+                continue
+            else:
+                draw_sphere_marker(draw_position, 0.1, (0, 0, 1, 1))
+
             if tentative_g < g_score[node_idx]:
-                neighbor_config = update_config(current_config, neighbor_weight[i, :], d_total)
-                config_table[node_idx] = neighbor_config
                 came_from[node_idx] = current_idx
                 g_score[node_idx] = tentative_g
                 h_score = compute_h(neighbor_config, goal_config, variant)
                 f_score[node_idx] = tentative_g + h_score
 
-                if node_idx not in open_set.keys():
-                    if collision_fn(tuple(neighbor_config)) == False:
-                        open_set[node_idx] = current_config
-                        draw_sphere_marker(tuple(neighbor_config)[:2], 0.1, (0, 0, 1, 1))
-                    else:
-                        draw_sphere_marker(tuple(neighbor_config)[:2], 0.1, (1, 0, 0, 1))
+                if node_idx not in open_set:
+                    open_set.put(priority, tentative_g + h_score, node_idx)
+
+
 
     print("No Solution Found")
 
-    
     ######################
     print("Planner run time: ", time.time() - start_time)
     # Execute planned path
