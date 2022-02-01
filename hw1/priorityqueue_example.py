@@ -26,18 +26,36 @@ if __name__ == "__main__":
     # q.put((0.6, Node(5,2,0.6,4,1)))
 
     # solution: assign a comparable unique ID to every tuple
-    q.put((1.46, 0, Node(2,3,0.3,1,0)))
-    q.put((2.6, 1, Node(5,2,0.1,2,1)))
-    q.put((5.6, 2, Node(2,3,0.3,3,2)))
-    q.put((0.6, 3, Node(4,3,0.2,4,1)))
-    q.put((0.6, 4, Node(5,2,0.6,4,1)))
+    q.put((-1, 2.6, 3))
+    q.put((-1, 1.5, 3))
+    q.put((-1, 1.7, 3))
+    q.put((-2, 1.4, 2))
+    q.put((-2, 0.33, 1))
+    q.put((-2, 1.5, 2))
+    q.put((-2, 0.67, 1))
+    # q.put((5.6, 2, Node(2,3,0.3,3,2)))
+    # q.put((0.6, 3, Node(4,3,0.2,4,1)))
+    # q.put((0.6, 4, Node(5,2,0.6,4,1)))
 
-    print("Pop elements of queue in order of increasing priority:")
-    next_item = q.get()
-    print("Priority:", next_item[0])
-    next_item[2].printme()
-    q.get()
+    # print("Pop elements of queue in order of increasing priority:")
+    # next_item = q.get()
+    # print("Priority:", next_item[0])
+    # next_item[2].printme()
+    # next_item = q.queue
+    # print(next_item)
+    # c = q.queue[1]
+    # # print(c[2]==3)
+    # print(any(1.2 in item for item in q.queue))
+    # for item in q.queue:
+    #     if item[2] == 1:
+    #         print(True)
+    # for item in q.queue:
+    #     if Node(2,3,0.3,1,0) in item[2]:
+    #         print("true")
+
+    a=q.get((-1, 1.5, 3))
+    print(a)
     # while not q.empty():
     #     next_item = q.get()
     #     print("Priority:", next_item[0])
-    #     next_item[2].printme()
+    #     print("f:", next_item[1])
