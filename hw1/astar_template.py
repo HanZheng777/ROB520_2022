@@ -1,5 +1,5 @@
 import numpy as np
-from pybullet_tools.more_utils import get_collision_fn_PR2, load_env, execute_trajectory, draw_sphere_marker
+from pybullet_tools.more_utils import get_collision_fn_PR2, load_env, execute_trajectory, draw_sphere_marker, wait_for_duration
 from pybullet_tools.utils import connect, disconnect, get_joint_positions, wait_if_gui, set_joint_positions, joint_from_name, get_link_pose, link_from_name
 from pybullet_tools.pr2_utils import PR2_GROUPS
 import time
@@ -43,7 +43,8 @@ def update_config(current_config, weight_row, d_total):
     if abs(config[2]) >= np.pi :
         config[2] = (config[2] + np.pi) % (2 * np.pi) - np.pi
 
-    return tuple(config)
+    config = (round(config[0], 2), round(config[1], 2), config[2])
+    return config
 
 def compute_neighbor_dist(neighbor, d_total, variant=2):
 
@@ -58,16 +59,23 @@ def compute_neighbor_dist(neighbor, d_total, variant=2):
     return dist
 
 
-def reconstruct_path(came_from, current_config, close_set):
+def reconstruct_path(came_from, start_config, goal_config, body, joints):
 
     path = []
-    idx = came_from.indx(current_config)
-    while idx != 0:
-        pre_idx = came_from[idx]
-        pre_config = close_set[pre_idx]
-        path.insert(0, pre_config)
-        idx = pre_idx
+    config = goal_config
+    while config != start_config:
+        path.append(config)
+        parent_config = came_from[config]
+        config = parent_config
 
+    path.append(start_config)
+    path.reverse()
+
+    for config in path:
+        set_joint_positions(body, joints, config)
+        draw_position = tuple(config[:2]) + (0,)
+        draw_sphere_marker(draw_position, 0.05, (0, 0, 0, 1))
+        wait_for_duration(0.1)
     return path
 
 
@@ -137,55 +145,34 @@ def main(screenshot=False):
         if current_config == goal_config:
             # path = reconstruct_path(came_from, current_config, config_table)
             print("Reach Goal")
+            # collision_fn(current_config)
+            reconstruct_path(came_from, start_config, goal_config, robots['pr2'], base_joints)
             break
 
         for i in range(num_neighbor):
 
             neighbor_config = update_config(current_config, neighbor_weight[i, :], d_total)
-            # if neighbor_config not in f_score.keys():
-            # if not any(True for v in config_table.values() if v==neighbor_config):
-
-            # draw_position = tuple(neighbor_config[:2]) + (0,)
-            # if collision_fn(tuple(neighbor_config)):
-            #     # draw_sphere_marker(draw_position, 0.1, (1, 0, 0, 1))
-            #     continue
-            # else:
-            #     draw_sphere_marker(draw_position, 0.1, (0, 0, 1, 1))
-                # config_table[node_idx] = tuple(neighbor_config)
-            # if
-            #     g_score[neighbor_config] = np.inf
-
-
-                # if not any(True f/or v in config_table.values() if v == neighbor_config):
-                #
-                # config_table[node_idx] = tuple(neighbor_config)
-                # g_score[node_idx] = np.inf
-
-                # if not any(True for node in open_set.queue if node[2] == neighbor_config):
-                #     node_idx += 1
-                #     g_score[node_idx] = np.inf
-
-            # if
-            #     g_score[neighbor_config] = np.inf
 
             tentative_g = g_score[current_config] + neighbor_dist[i]
 
-            if goal_config in g_score.keys():
-                print("fuck, goal is found")
+            # if goal_config in g_score.keys():
+            #     print("goal is found")
+            draw_position = tuple(neighbor_config[:2]) + (0,)
 
             if neighbor_config not in g_score.keys() or tentative_g < g_score[neighbor_config]:
                 if not collision_fn(neighbor_config):
+                    # draw_sphere_marker(draw_position, 0.1, (0, 0, 1, 1))
                     iter_idx += 1
                     came_from[neighbor_config] = current_config
                     g_score[neighbor_config] = tentative_g
                     h_score = compute_h(neighbor_config, goal_config, variant)
                     f_score[neighbor_config] = tentative_g + h_score
 
-                    # if all(False for items in open_set.queue if items[2] == neighbor_config):
-                    open_set.put((tentative_g + h_score, neighbor_config))
+                    if all(False for items in open_set.queue if items[1] == neighbor_config):
+                        open_set.put((tentative_g + h_score, neighbor_config))
                     # print(open_set.qsize())
-
-
+                # else:
+                #     draw_sphere_marker(draw_position, 0.1, (1, 0, 0, 1))
 
 
     ######################
