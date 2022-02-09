@@ -8,6 +8,18 @@ from queue import PriorityQueue
 
 #########################
 
+class ReversePriorityQueue(PriorityQueue):
+
+    def put(self, tup):
+        newtup = tup[0] * -1, tup[1], tup[2]
+        PriorityQueue.put(self, newtup)
+
+    def get(self):
+        tup = PriorityQueue.get(self)
+        newtup = tup[0] * -1, tup[1], tup[2]
+        return newtup
+
+
 def compute_h(current_config, goal_config, variant=2):
 
     diff = np.array(current_config) - np.array(goal_config)
@@ -19,6 +31,13 @@ def compute_h(current_config, goal_config, variant=2):
     else:
         h = np.linalg.norm(diff)
     return h
+
+
+def compute_e(G_global, g, h):
+
+    e = (G_global - g) / (h + 1e-15)
+    return e
+
 
 def get_neighbor_weight(variant=2):
 
@@ -36,6 +55,7 @@ def get_neighbor_weight(variant=2):
 
     return weight
 
+
 def update_config(current_config, weight_row, d_total):
 
     increment = np.array(d_total) * weight_row
@@ -44,7 +64,9 @@ def update_config(current_config, weight_row, d_total):
         config[2] = (config[2] + np.pi) % (2 * np.pi) - np.pi
 
     config = (round(config[0], 2), round(config[1], 2), config[2])
+
     return config
+
 
 def compute_neighbor_dist(neighbor, d_total, variant=2):
 
@@ -56,6 +78,7 @@ def compute_neighbor_dist(neighbor, d_total, variant=2):
             dist[i] = np.sum(np.abs(value))
         else:
             dist[i] = np.linalg.norm(value)
+
     return dist
 
 
@@ -76,7 +99,26 @@ def reconstruct_path(came_from, start_config, goal_config, body, joints):
         draw_position = tuple(config[:2]) + (0,)
         draw_sphere_marker(draw_position, 0.05, (0, 0, 0, 1))
         wait_for_duration(0.1)
+
     return path
+
+
+def prune(open_set, G_global, g_score, goal_config, variant):
+
+    update_open_set = ReversePriorityQueue(0)
+
+    while not open_set.empty():
+
+        current_node = open_set.get()
+        current_config = current_node[1]
+        g_curr = g_score[current_node]
+        h_curr = compute_h(current_config, goal_config, variant)
+
+        if g_curr + h_curr < G_global:
+            new_e_curr = compute_e(G_global, g_curr, h_curr)
+            update_open_set.put((new_e_curr, current_config))
+
+    return update_open_set
 
 
 def main(screenshot=False):
@@ -89,91 +131,75 @@ def main(screenshot=False):
     base_joints = [joint_from_name(robots['pr2'], name) for name in PR2_GROUPS['base']]
 
     collision_fn = get_collision_fn_PR2(robots['pr2'], base_joints, list(obstacles.values()))
-    # Example use of collision checking
-    # print("Robot colliding? ", collision_fn((0.5, -1.3, -np.pi/2)))
-
-    # Example use of setting body poses
-    # set_pose(obstacles['ikeatable6'], ((0, 0, 0), (1, 0, 0, 0)))
-
-    # Example of draw 
-    # draw_sphere_marker((0, 0, 1), 0.1, (1, 0, 0, 1))
-
-    
     start_config = tuple(get_joint_positions(robots['pr2'], base_joints))
-    # start_ponint = list(start_config[:2])
-    # start_ponint.append(0)
-    # draw_sphere_marker(tuple(start_ponint), 0.1, (1, 0, 0, 1))
 
     goal_config = (2.6, -1.3, -np.pi/2)
     path = []
     start_time = time.time()
+
     ### YOUR CODE HERE ###
 
-    # start_node = (0, start_config)
     dx = 0.1
     dy = 0.1
     d_theta = np.pi/2
     d_total = [dx, dy, d_theta]
-    variant = 2
+    variant = 4
 
-    # priority = -1
-    open_set = PriorityQueue()
-    close_set = []
+    open_set = ReversePriorityQueue(0)
     open_set.put((compute_h(start_config, goal_config, variant), start_config))
 
     came_from = {start_config: start_config}
-    config_table = {0: start_config}
-    iter_idx = 0
     g_score = {start_config: 0}
-    f_score = {start_config: compute_h(start_config, goal_config, variant)}
 
     neighbor_weight = get_neighbor_weight(variant)
     neighbor_dist = compute_neighbor_dist(neighbor_weight, d_total)
     num_neighbor = len(neighbor_dist)
 
+    E_global = np.inf
+    G_global = np.inf
 
     while not open_set.empty():
 
-        # priority -= 1
-        # current_idx = open_set.get()[2]
-        # current_config = config_table[current_idx]
-        current_node = open_set.get()
-        current_config = current_node[1]
-        # current_idx = current_node[1]
-        # close_set[current_idx] = current_config
+        while not open_set.empty():
 
-        if current_config == goal_config:
-            # path = reconstruct_path(came_from, current_config, config_table)
-            print("Reach Goal")
-            # collision_fn(current_config)
-            reconstruct_path(came_from, start_config, goal_config, robots['pr2'], base_joints)
-            break
+            current_node = open_set.get()
+            e_curr = current_node[0]
+            g_curr = g_score[current_node]
+            current_config = current_node[1]
 
-        for i in range(num_neighbor):
+            if e_curr < E_global:
+                E_global = e_curr
 
-            neighbor_config = update_config(current_config, neighbor_weight[i, :], d_total)
+            if current_config == goal_config:
+                G_global = g_curr
+                break
 
-            tentative_g = g_score[current_config] + neighbor_dist[i]
+            for i in range(num_neighbor):
 
-            # if goal_config in g_score.keys():
-            #     print("goal is found")
-            draw_position = tuple(neighbor_config[:2]) + (0,)
+                neighbor_config = update_config(current_config, neighbor_weight[i, :], d_total)
 
-            if neighbor_config not in g_score.keys() or tentative_g < g_score[neighbor_config]:
-                if not collision_fn(neighbor_config):
-                    # draw_sphere_marker(draw_position, 0.1, (0, 0, 1, 1))
-                    iter_idx += 1
-                    came_from[neighbor_config] = current_config
-                    g_score[neighbor_config] = tentative_g
-                    h_score = compute_h(neighbor_config, goal_config, variant)
-                    f_score[neighbor_config] = tentative_g + h_score
+                tentative_g = g_score[current_config] + neighbor_dist[i]
 
-                    if all(False for items in open_set.queue if items[1] == neighbor_config):
-                        open_set.put((tentative_g + h_score, neighbor_config))
-                    # print(open_set.qsize())
-                # else:
-                #     draw_sphere_marker(draw_position, 0.1, (1, 0, 0, 1))
+                draw_position = tuple(neighbor_config[:2]) + (0,)
 
+                if neighbor_config not in g_score.keys() or tentative_g < g_score[neighbor_config]:
+                    if not collision_fn(neighbor_config):
+                        # draw_sphere_marker(draw_position, 0.1, (0, 0, 1, 1))
+
+                        came_from[neighbor_config] = current_config
+                        g_score[neighbor_config] = tentative_g
+                        h_neighbor = compute_h(neighbor_config, goal_config, variant)
+
+                        if tentative_g + h_neighbor < G_global:
+                            e_neighbor = compute_e(G_global, tentative_g, h_neighbor)
+                            open_set.put((e_neighbor, neighbor_config))
+                        # print(open_set.qsize())
+                    # else:
+                    #     draw_sphere_marker(draw_position, 0.1, (1, 0, 0, 1))
+
+        open_set = prune(open_set, G_global, g_score, goal_config, variant)
+
+        reconstruct_path(came_from, start_config, goal_config, robots['pr2'], base_joints)
 
     ######################
     print("Planner run time: ", time.time() - start_time)
