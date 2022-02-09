@@ -1,6 +1,6 @@
 import numpy as np
 from pybullet_tools.more_utils import get_collision_fn_PR2, load_env, execute_trajectory, draw_sphere_marker
-from pybullet_tools.utils import connect, disconnect, get_joint_positions, wait_if_gui, set_joint_positions, joint_from_name, wait_for_duration
+from pybullet_tools.utils import connect, disconnect, get_joint_positions, wait_if_gui, set_joint_positions, joint_from_name, wait_for_duration, get_pose, set_pose
 from pybullet_tools.pr2_utils import PR2_GROUPS
 import time
 from queue import PriorityQueue
@@ -89,14 +89,20 @@ def main(screenshot=False):
     base_joints = [joint_from_name(robots['pr2'], name) for name in PR2_GROUPS['base']]
 
     collision_fn = get_collision_fn_PR2(robots['pr2'], base_joints, list(obstacles.values()))
-    # Example use of collision checking
-    # print("Robot colliding? ", collision_fn((0.5, -1.3, -np.pi/2)))
 
-    # Example use of setting body poses
-    # set_pose(obstacles['ikeatable6'], ((0, 0, 0), (1, 0, 0, 0)))
 
-    # Example of draw 
-    # draw_sphere_marker((0, 0, 1), 0.1, (1, 0, 0, 1))
+    table_poses = []
+    for i in range(6):
+        table_poses.append(get_pose(obstacles["ikeatable{}".format(i + 1)]))
+    # assign new poses
+    set_pose(obstacles["ikeatable1"], ((-2, -1.2, 0.74), (0.0, 0.0, 0.4, 0.707)))
+    set_pose(obstacles["ikeatable2"], ((-3, 0.5, 0.74), (0.0, 0.0, -0.3, 0.707)))
+
+    set_pose(obstacles["ikeatable3"], ((0.1, -0.8, 0.74), (0.0, 0.0, 0.1, 0.707)))
+    set_pose(obstacles["ikeatable4"], ((-1.3, 0.6, 0.74), (0.0, 0.0, -0.2, 0.707)))
+
+    set_pose(obstacles["ikeatable5"], ((1.8, -0.5, 0.74), (0.0, 0.0, 0.5, 0.707)))
+    set_pose(obstacles["ikeatable6"], ((2.5, 1.2, 0.74), (0.0, 0.0, -0.4, 0.707)))
 
     
     start_config = tuple(get_joint_positions(robots['pr2'], base_joints))
@@ -147,6 +153,8 @@ def main(screenshot=False):
             print("Reach Goal")
             # collision_fn(current_config)
             reconstruct_path(came_from, start_config, goal_config, robots['pr2'], base_joints)
+            total_cost = g_score[goal_config]
+            print("Total cost: {}".format(total_cost))
             break
 
         for i in range(num_neighbor):

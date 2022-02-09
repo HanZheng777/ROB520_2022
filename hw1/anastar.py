@@ -1,6 +1,6 @@
 import numpy as np
 from pybullet_tools.more_utils import get_collision_fn_PR2, load_env, execute_trajectory, draw_sphere_marker
-from pybullet_tools.utils import connect, disconnect, get_joint_positions, wait_if_gui, set_joint_positions, joint_from_name, wait_for_duration
+from pybullet_tools.utils import connect, disconnect, get_joint_positions, wait_if_gui, set_joint_positions, joint_from_name, wait_for_duration, get_pose, set_pose
 from pybullet_tools.pr2_utils import PR2_GROUPS
 import time
 from queue import PriorityQueue
@@ -10,13 +10,13 @@ from queue import PriorityQueue
 
 class ReversePriorityQueue(PriorityQueue):
 
-    def put(self, tup):
-        newtup = tup[0] * -1, tup[1], tup[2]
+    def put(self, node):
+        newtup = (node[0] * -1, node[1])
         PriorityQueue.put(self, newtup)
 
     def get(self):
-        tup = PriorityQueue.get(self)
-        newtup = tup[0] * -1, tup[1], tup[2]
+        node = PriorityQueue.get(self)
+        newtup = (node[0] * -1, node[1])
         return newtup
 
 
@@ -105,13 +105,13 @@ def reconstruct_path(came_from, start_config, goal_config, body, joints):
 
 def prune(open_set, G_global, g_score, goal_config, variant):
 
-    update_open_set = ReversePriorityQueue(0)
+    update_open_set = ReversePriorityQueue()
 
     while not open_set.empty():
 
         current_node = open_set.get()
         current_config = current_node[1]
-        g_curr = g_score[current_node]
+        g_curr = g_score[current_config]
         h_curr = compute_h(current_config, goal_config, variant)
 
         if g_curr + h_curr < G_global:
@@ -139,13 +139,27 @@ def main(screenshot=False):
 
     ### YOUR CODE HERE ###
 
+    table_poses = []
+    for i in range(6):
+        table_poses.append(get_pose(obstacles["ikeatable{}".format(i + 1)]))
+    # assign new poses
+    set_pose(obstacles["ikeatable1"], ((-2, -1.2, 0.74), (0.0, 0.0, 0.4, 0.707)))
+    set_pose(obstacles["ikeatable2"], ((-3, 0.5, 0.74), (0.0, 0.0, -0.3, 0.707)))
+
+    set_pose(obstacles["ikeatable3"], ((0.1, -0.8, 0.74), (0.0, 0.0, 0.1, 0.707)))
+    set_pose(obstacles["ikeatable4"], ((-1.3, 0.6, 0.74), (0.0, 0.0, -0.2, 0.707)))
+
+    set_pose(obstacles["ikeatable5"], ((1.8, -0.5, 0.74), (0.0, 0.0, 0.5, 0.707)))
+    set_pose(obstacles["ikeatable6"], ((2.5, 1.2, 0.74), (0.0, 0.0, -0.4, 0.707)))
+
+
     dx = 0.1
     dy = 0.1
     d_theta = np.pi/2
     d_total = [dx, dy, d_theta]
-    variant = 4
+    variant = 2
 
-    open_set = ReversePriorityQueue(0)
+    open_set = ReversePriorityQueue()
     open_set.put((compute_h(start_config, goal_config, variant), start_config))
 
     came_from = {start_config: start_config}
@@ -158,14 +172,20 @@ def main(screenshot=False):
     E_global = np.inf
     G_global = np.inf
 
+    time_limit = 200
+
     while not open_set.empty():
+
+        # current_time = time.time()
+        # if current_time - start_time > time_limit:
+        #     break
 
         while not open_set.empty():
 
             current_node = open_set.get()
             e_curr = current_node[0]
-            g_curr = g_score[current_node]
             current_config = current_node[1]
+            g_curr = g_score[current_config]
 
             if e_curr < E_global:
                 E_global = e_curr
@@ -180,7 +200,7 @@ def main(screenshot=False):
 
                 tentative_g = g_score[current_config] + neighbor_dist[i]
 
-                draw_position = tuple(neighbor_config[:2]) + (0,)
+                # draw_position = tuple(neighbor_config[:2]) + (0,)
 
                 if neighbor_config not in g_score.keys() or tentative_g < g_score[neighbor_config]:
                     if not collision_fn(neighbor_config):
@@ -199,7 +219,9 @@ def main(screenshot=False):
 
         open_set = prune(open_set, G_global, g_score, goal_config, variant)
 
-        reconstruct_path(came_from, start_config, goal_config, robots['pr2'], base_joints)
+    reconstruct_path(came_from, start_config, goal_config, robots['pr2'], base_joints)
+    total_cost = g_score[goal_config]
+    print("Total cost: {}".format(total_cost))
 
     ######################
     print("Planner run time: ", time.time() - start_time)

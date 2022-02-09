@@ -13,8 +13,15 @@ def main(screenshot=False):
     for i in range(6):
         table_poses.append(get_pose(obstacles["ikeatable{}".format(i+1)]))
     # assign new poses
-    set_pose(obstacles["ikeatable5"], ((-1.6, -1, 0.74), (0.0, 0.0, 0.707, 0.707)))
-    set_pose(obstacles["ikeatable6"], ((-1.6, 1, 0.74), (0.0, 0.0, 0.707, 0.707)))
+
+    set_pose(obstacles["ikeatable1"], ((-2, -1.2, 0.74), (0.0, 0.0, 0.4, 0.707)))
+    set_pose(obstacles["ikeatable2"], ((-3, 0.5, 0.74), (0.0, 0.0, -0.3, 0.707)))
+
+    set_pose(obstacles["ikeatable3"], ((0.1, -0.8, 0.74), (0.0, 0.0, 0.1, 0.707)))
+    set_pose(obstacles["ikeatable4"], ((-1.3, 0.6, 0.74), (0.0, 0.0, -0.2, 0.707)))
+
+    set_pose(obstacles["ikeatable5"], ((2, -0.5, 0.74), (0.0, 0.0, 0.5, 0.707)))
+    set_pose(obstacles["ikeatable6"], ((2.5, 1.2, 0.74), (0.0, 0.0, -0.4, 0.707)))
 
 
     wait_if_gui()
