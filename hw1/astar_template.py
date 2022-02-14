@@ -13,7 +13,6 @@ def compute_h(current_config, goal_config, variant=2):
     diff = np.array(current_config) - np.array(goal_config)
     if np.abs(diff[2]) > np.pi:
         diff[2] = 2*np.pi - np.abs(diff[2])
-    diff[2] = diff[2] * 0.65
     if variant == 1 or variant == 3:
         h = np.sum(np.abs(diff))
     else:
@@ -51,7 +50,6 @@ def compute_neighbor_dist(neighbor, d_total, variant=2):
     dist = np.zeros(neighbor.shape[0])
     for i in range(len(dist)):
         value = neighbor[i, :] * np.array(d_total)
-        value[2] = value[2] * 0.65
         if variant == 1 or variant == 3:
             dist[i] = np.sum(np.abs(value))
         else:
@@ -73,7 +71,7 @@ def reconstruct_path(came_from, start_config, goal_config, body, joints):
 
     for config in path:
         set_joint_positions(body, joints, config)
-        draw_position = tuple(config[:2]) + (0,)
+        draw_position = tuple(config[:2]) + (0.1,)
         draw_sphere_marker(draw_position, 0.05, (0, 0, 0, 1))
         wait_for_duration(0.1)
     return path
@@ -90,19 +88,6 @@ def main(screenshot=False):
 
     collision_fn = get_collision_fn_PR2(robots['pr2'], base_joints, list(obstacles.values()))
 
-
-    table_poses = []
-    for i in range(6):
-        table_poses.append(get_pose(obstacles["ikeatable{}".format(i + 1)]))
-    # # assign new poses
-    set_pose(obstacles["ikeatable1"], ((-2, -1.2, 0.74), (0.0, 0.0, 0.4, 0.707)))
-    set_pose(obstacles["ikeatable2"], ((-3, 0.5, 0.74), (0.0, 0.0, -0.3, 0.707)))
-
-    set_pose(obstacles["ikeatable3"], ((0.1, -0.8, 0.74), (0.0, 0.0, 0.1, 0.707)))
-    set_pose(obstacles["ikeatable4"], ((-1.3, 0.6, 0.74), (0.0, 0.0, -0.2, 0.707)))
-    #
-    set_pose(obstacles["ikeatable5"], ((1.8, -0.5, 0.74), (0.0, 0.0, 0.5, 0.707)))
-    set_pose(obstacles["ikeatable6"], ((2.5, 1.2, 0.74), (0.0, 0.0, -0.4, 0.707)))
 
     
     start_config = tuple(get_joint_positions(robots['pr2'], base_joints))
@@ -137,24 +122,24 @@ def main(screenshot=False):
     neighbor_dist = compute_neighbor_dist(neighbor_weight, d_total)
     num_neighbor = len(neighbor_dist)
 
+    collision_set = []
+    free_set = []
+
 
     while not open_set.empty():
 
-        # priority -= 1
-        # current_idx = open_set.get()[2]
-        # current_config = config_table[current_idx]
+
         current_node = open_set.get()
         current_config = current_node[1]
-        # current_idx = current_node[1]
-        # close_set[current_idx] = current_config
 
         if current_config == goal_config:
-            # path = reconstruct_path(came_from, current_config, config_table)
+
             print("Reach Goal")
-            # collision_fn(current_config)
-            reconstruct_path(came_from, start_config, goal_config, robots['pr2'], base_joints)
+            print("Planner run time: ", time.time() - start_time)
             total_cost = g_score[goal_config]
-            print("Total cost: {}".format(total_cost))
+            print("Total cost for variant {}: {}".format(variant, total_cost))
+            reconstruct_path(came_from, start_config, goal_config, robots['pr2'], base_joints)
+
             break
 
         for i in range(num_neighbor):
@@ -163,13 +148,11 @@ def main(screenshot=False):
 
             tentative_g = g_score[current_config] + neighbor_dist[i]
 
-            # if goal_config in g_score.keys():
-            #     print("goal is found")
             draw_position = tuple(neighbor_config[:2]) + (0,)
 
             if neighbor_config not in g_score.keys() or tentative_g < g_score[neighbor_config]:
                 if not collision_fn(neighbor_config):
-                    # draw_sphere_marker(draw_position, 0.1, (0, 0, 1, 1))
+
                     iter_idx += 1
                     came_from[neighbor_config] = current_config
                     g_score[neighbor_config] = tentative_g
@@ -177,13 +160,22 @@ def main(screenshot=False):
                     f_score[neighbor_config] = tentative_g + h_score
 
                     open_set.put((tentative_g + h_score, neighbor_config))
+
+                    # if not draw_position in free_set:
+                    #     free_set.append(draw_position)
                     # print(open_set.qsize())
                 # else:
-                #     draw_sphere_marker(draw_position, 0.1, (1, 0, 0, 1))
+                #     if not draw_position in collision_set:
+                #         collision_set.append(draw_position)
+                    # draw_sphere_marker(draw_position, 0.05, (1, 0, 0, 1))
 
+    # for item in free_set:
+    #     draw_sphere_marker(item, 0.05, (0, 0, 1, 1))
+    #
+    # for item in collision_set:
+    #     draw_sphere_marker(item, 0.05, (1, 0, 0, 1))
 
     ######################
-    print("Planner run time: ", time.time() - start_time)
     # Execute planned path
     execute_trajectory(robots['pr2'], base_joints, path, sleep=0.2)
     # Keep graphics window opened
