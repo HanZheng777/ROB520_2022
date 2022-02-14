@@ -14,6 +14,7 @@ def compute_h(current_config, goal_config, variant=2):
     if np.abs(diff[2]) > np.pi:
         diff[2] = 2*np.pi - np.abs(diff[2])
     if variant == 1 or variant == 3:
+        diff[2] = diff[2] * 0.65
         h = np.sum(np.abs(diff))
     else:
         h = np.linalg.norm(diff)
@@ -51,6 +52,7 @@ def compute_neighbor_dist(neighbor, d_total, variant=2):
     for i in range(len(dist)):
         value = neighbor[i, :] * np.array(d_total)
         if variant == 1 or variant == 3:
+            value[2] = value[2] * 0.65
             dist[i] = np.sum(np.abs(value))
         else:
             dist[i] = np.linalg.norm(value)
@@ -94,6 +96,7 @@ def main(screenshot=False):
     # start_ponint = list(start_config[:2])
     # start_ponint.append(0)
     # draw_sphere_marker(tuple(start_ponint), 0.1, (1, 0, 0, 1))
+
 
     goal_config = (2.6, -1.3, -np.pi/2)
     path = []
@@ -161,14 +164,14 @@ def main(screenshot=False):
 
                     open_set.put((tentative_g + h_score, neighbor_config))
 
-                    # if not draw_position in free_set:
-                    #     free_set.append(draw_position)
-                    # print(open_set.qsize())
-                # else:
-                #     if not draw_position in collision_set:
-                #         collision_set.append(draw_position)
-                    # draw_sphere_marker(draw_position, 0.05, (1, 0, 0, 1))
-
+    #                 if not draw_position in free_set:
+    #                     free_set.append(draw_position)
+    #
+    #             else:
+    #                 if not draw_position in collision_set:
+    #                     collision_set.append(draw_position)
+    #
+    #
     # for item in free_set:
     #     draw_sphere_marker(item, 0.05, (0, 0, 1, 1))
     #

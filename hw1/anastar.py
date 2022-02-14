@@ -26,6 +26,7 @@ def compute_h(current_config, goal_config, variant=2):
     if np.abs(diff[2]) > np.pi:
         diff[2] = 2*np.pi - np.abs(diff[2])
     if variant == 1 or variant == 3:
+        diff[2] = diff[2] * 0.65
         h = np.sum(np.abs(diff))
     else:
         h = np.linalg.norm(diff)
@@ -73,6 +74,7 @@ def compute_neighbor_dist(neighbor, d_total, variant=2):
     for i in range(len(dist)):
         value = neighbor[i, :] * np.array(d_total)
         if variant == 1 or variant == 3:
+            value[2] = value[2] * 0.65
             dist[i] = np.sum(np.abs(value))
         else:
             dist[i] = np.linalg.norm(value)
