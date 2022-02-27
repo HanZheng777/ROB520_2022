@@ -7,6 +7,7 @@ from queue import PriorityQueue
 ### YOUR IMPORTS HERE ###
 
 #########################
+""" ROB 520 WI 2022 - Han Zheng"""
 
 class ReversePriorityQueue(PriorityQueue):
 
@@ -238,7 +239,6 @@ def main(screenshot=False):
     #
     # for item in collision_set:
     #     draw_sphere_marker(item, 0.05, (1, 0, 0, 1))
-
 
     ######################
 

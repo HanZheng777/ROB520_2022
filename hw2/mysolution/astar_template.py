@@ -7,6 +7,7 @@ from queue import PriorityQueue
 ### YOUR IMPORTS HERE ###
 
 #########################
+""" ROB 520 WI 2022 - Han Zheng"""
 
 def compute_h(current_config, goal_config, variant=2):
 
@@ -89,21 +90,14 @@ def main(screenshot=False):
     base_joints = [joint_from_name(robots['pr2'], name) for name in PR2_GROUPS['base']]
 
     collision_fn = get_collision_fn_PR2(robots['pr2'], base_joints, list(obstacles.values()))
-
-
     
     start_config = tuple(get_joint_positions(robots['pr2'], base_joints))
-    # start_ponint = list(start_config[:2])
-    # start_ponint.append(0)
-    # draw_sphere_marker(tuple(start_ponint), 0.1, (1, 0, 0, 1))
-
 
     goal_config = (2.6, -1.3, -np.pi/2)
     path = []
     start_time = time.time()
     ### YOUR CODE HERE ###
 
-    # start_node = (0, start_config)
     dx = 0.1
     dy = 0.1
     d_theta = np.pi/2
@@ -170,7 +164,6 @@ def main(screenshot=False):
     #             else:
     #                 if not draw_position in collision_set:
     #                     collision_set.append(draw_position)
-    #
     #
     # for item in free_set:
     #     draw_sphere_marker(item, 0.05, (0, 0, 1, 1))
