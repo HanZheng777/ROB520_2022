@@ -82,7 +82,7 @@ def reconstruct_path(came_from, start_config, goal_config, body, joints):
 
 def main(screenshot=False):
     # initialize PyBullet
-    connect(use_gui=True)
+
     # load robot and obstacle resources
     robots, obstacles = load_env('scenes/pr2doorway.json')
 
