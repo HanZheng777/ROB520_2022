@@ -4,11 +4,12 @@ from pybullet_tools.utils import connect, disconnect, wait_if_gui, wait_for_user
     set_joint_positions, get_joint_info, get_link_pose, link_from_name, wait_for_duration
 import random
 import time
+import copy
 
 
-class RRT_Connect(object):
+class BiRRT_Connect(object):
 
-    def __init__(self, start_config, goal_config, joint_limits, collision_fn,  eps, goal_bias):
+    def __init__(self, start_config, goal_config, joint_limits, collision_fn, eps):
 
         self.start_config = start_config
         self.goal_config = goal_config
@@ -17,16 +18,24 @@ class RRT_Connect(object):
         self.collision_fn = collision_fn
 
         self.eps = eps
-        self.goal_bias = goal_bias
+        # self.goal_bias = goal_bias
 
 
-        self.tree = {start_config: start_config}
+        self.tree_A = {start_config: None}
+        self.tree_B = {goal_config: None}
 
 
-    def find_nearest(self, q_rand):
+    def swap_trees(self):
 
-        nodes = np.array(list(self.tree.keys()))
-        diffs = nodes - np.array(q_rand)
+        tree_A_copy = copy.deepcopy(self.tree_A)
+        self.tree_A = copy.deepcopy(self.tree_B)
+        self.tree_B = copy.deepcopy(tree_A_copy)
+
+
+    def find_nearest(self, tree, q):
+
+        nodes = np.array(list(tree.keys()))
+        diffs = nodes - np.array(q)
         distance = np.linalg.norm(diffs, axis=1)
         indx = np.argmin(distance)
         q_near = tuple(nodes[indx])
@@ -34,13 +43,13 @@ class RRT_Connect(object):
         return q_near
 
 
-    def connect_tree(self, q_rand):
+    def connect_tree(self, tree, q):
 
-        q_near = self.find_nearest(q_rand)
+        q_near = self.find_nearest(tree, q)
 
         while True:
 
-            direction = np.array(q_rand) - np.array(q_near)
+            direction = np.array(q) - np.array(q_near)
             direction_length = np.linalg.norm(direction)
             if direction_length <= self.eps:
                 step = direction
@@ -53,46 +62,63 @@ class RRT_Connect(object):
             if self.collision_fn(q_new):
                 flag = "Trapped"
             else:
-                self.tree[q_new] = q_near
-                if q_new == q_rand:
+                tree[q_new] = q_near
+                if q_new == q:
                     flag = "Reached"
                 else:
                     flag = "Advanced"
             q_near = q_new
 
             if flag != "Advanced":
-                return q_new
+                return flag, q_new
 
 
     def sample(self):
 
-        mask = np.random.rand()
+        # mask = np.random.rand()
+        #
+        # if mask <= self.goal_bias:
+        #     q_rand = self.goal_config
+        # else:
+        q_rand = []
+        for i in self.joint_limits:
+            joint_s = random.uniform(self.joint_limits[i][0], self.joint_limits[i][1])
+            q_rand.append(round(joint_s, 3))
 
-        if mask <= self.goal_bias:
-            q_rand = self.goal_config
-        else:
-            q_rand = []
-            for i in self.joint_limits:
-                joint_s = random.uniform(self.joint_limits[i][0], self.joint_limits[i][1])
-                q_rand.append(round(joint_s, 3))
-
-            q_rand = np.around(q_rand, decimals=3)
-            q_rand = tuple(q_rand)
+        q_rand = np.around(q_rand, decimals=3)
+        q_rand = tuple(q_rand)
 
         return q_rand
 
 
-    def reconstruct_path(self):
+    def reconstruct_path(self, connection_point):
 
-        path = []
-        config = self.goal_config
-        while config != self.start_config:
-            path.append(config)
-            parent_config = self.tree[config]
+        path_A = []
+        path_B = []
+
+        if not self.goal_config in self.tree_B:
+            self.swap_trees()
+
+        # reverse_tree_B = {value:key for (key, value) in self.tree_B.items()}
+
+        config = connection_point
+
+        while config != self.goal_config:
+            path_B.append(config)
+            parent_config = self.tree_B[config]
             config = parent_config
 
-        path.append(self.start_config)
-        path.reverse()
+        config = connection_point
+
+        while config != self.start_config:
+            path_A.append(config)
+            parent_config = self.tree_A[config]
+            config = parent_config
+
+        path_A.append(self.start_config)
+        path_A.reverse()
+
+        path = path_A + path_B
 
         return path
 
@@ -101,14 +127,17 @@ class RRT_Connect(object):
 
         while True:
             q_rand = self.sample()
-            q_new = self.connect_tree(q_rand)
+            flag_A, q_new_A = self.connect_tree(self.tree_A, q_rand)
 
-            if q_new == self.goal_config:
-                print("Reach Goal!")
-                path = self.reconstruct_path()
+            if flag_A != "Trapped":
+                flag_B, q_new_B = self.connect_tree(self.tree_B, q_new_A)
 
-                return path
+                if flag_B == "Reached":
+                    print("Find Path!")
+                    path = self.reconstruct_path(q_new_B)
+                    return path
 
+                self.swap_trees()
 
 def draw_path(path, robot, joint_idx, start_config, target_link, line_width=25, line_color=(1,0,0)):
 
@@ -183,8 +212,8 @@ def main(screenshot=False):
     ### YOUR CODE HERE ###
 
     eps = 0.1
-    goal_bias = 0.1
-    planner = RRT_Connect(start_config, goal_config, joint_limits, collision_fn, eps, goal_bias)
+    # goal_bias = 0.4
+    planner = BiRRT_Connect(start_config, goal_config, joint_limits, collision_fn, eps)
     path = planner.execute()
     smoothing = True
 
