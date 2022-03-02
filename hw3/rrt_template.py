@@ -1,5 +1,5 @@
 import numpy as np
-from pybullet_tools.more_utils import load_env, get_collision_fn_PR2, execute_trajectory
+from pybullet_tools.more_utils import load_env, get_collision_fn_PR2, execute_trajectory, draw_line, wait_for_duration
 from pybullet_tools.utils import connect, disconnect, wait_if_gui, wait_for_user, joint_from_name, get_joint_positions, set_joint_positions, get_joint_info, get_link_pose, link_from_name
 import random
 import time
@@ -17,6 +17,7 @@ class RRT_Connect(object):
 
         self.eps = eps
         self.goal_bias = goal_bias
+
 
         self.tree = {start_config: start_config}
 
@@ -92,6 +93,7 @@ class RRT_Connect(object):
 
         return path
 
+
     def execute(self):
 
         while True:
@@ -101,7 +103,41 @@ class RRT_Connect(object):
             if q_new == self.goal_config:
                 print("Reach Goal!")
                 path = self.reconstruct_path()
+
                 return path
+
+
+def draw_path(path, robot, joint_idx, start_config, target_link, line_width=25, line_color=(1,0,0)):
+
+    target_link_idx = link_from_name(robot, target_link)
+
+    set_joint_positions(robot, joint_idx, start_config)
+    end_effector_path = [get_link_pose(robot, target_link_idx)[0]]
+
+    for config in path:
+        set_joint_positions(robot, joint_idx, config)
+        wait_for_duration(0.1)
+        end_effector_path.append(get_link_pose(robot, target_link_idx)[0])
+        draw_line(end_effector_path[-2], end_effector_path[-1], line_width, line_color)
+
+
+def shortpath_smoothing(path, collision_fn, num_iter=200):
+
+    for i in range(num_iter):
+        num_points = len(path)
+        way_points = np.random.randint(num_points, size=2)
+
+        diff = np.array(path[way_points[1]]) - np.array(path[way_points[0]])
+
+        for step in np.linspace(0, 1, num=20):
+            new_point = np.array(path[way_points[0]]) + step * diff
+            if collision_fn(new_point):
+                break
+
+        if step == 1:
+            del path[way_points[0]+1:way_points[1]]
+
+    return path
 
 
 def tuckarms(robot):
@@ -147,11 +183,20 @@ def main(screenshot=False):
     goal_bias = 0.4
     planner = RRT_Connect(start_config, goal_config, joint_limits, collision_fn, eps, goal_bias)
     path = planner.execute()
+    smoothing = True
+
+    print("Planner run time: ", time.time() - start_time)
+
+    # Execute planned path
+    target_link = "l_gripper_tool_frame"
+
+    draw_path(path, robot, joint_idx, start_config, target_link, line_color=(1,0,0))
+    if smoothing:
+        smoothed_path = shortpath_smoothing(path, collision_fn, num_iter=200)
+        draw_path(smoothed_path, robot, joint_idx, start_config, target_link, line_color=(0,0,1))
 
     ######################
-    print("Planner run time: ", time.time() - start_time)
-    # Execute planned path
-    execute_trajectory(robot, joint_idx, path, sleep=0.1)
+    # execute_trajectory(robot, joint_idx, path, sleep=0.1)
     # Keep graphics window opened
     wait_if_gui()
     disconnect()
