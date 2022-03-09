@@ -91,13 +91,13 @@ def main(screenshot=False):
     smoothed_l = []
 
     for i in range(30):
-        planner = RRT_Connect(start_config, goal_config, joint_limits, collision_fn, eps, goal_bias)
+        planner = BiRRT_Connect(start_config, goal_config, joint_limits, collision_fn, eps)
         start_time = time.time()
         path = planner.execute()
         RRT_t.append(time.time()-start_time)
         unsmoothed_l.append(compute_path_length(path, smoothing=False))
 
-        number_nodes_sampled.append(len(planner.tree))
+        number_nodes_sampled.append(len(planner.tree_A) + len(planner.tree_B))
 
         start_time = time.time()
         smoothed_path = shortpath_smoothing(path, collision_fn, num_iter=200)
@@ -107,16 +107,15 @@ def main(screenshot=False):
     data = {"RRT_t": RRT_t,
             "unsmoothed_l": unsmoothed_l,
             "number_nodes_sampled": number_nodes_sampled,
-            "smoothing_t": smoothing_t,
-            "smoothed_l": smoothed_l, }
+            }
     df = pd.DataFrame(data)
-    df.to_csv("RRT_data")
+    df.to_csv("BiRRT_data")
 
     plt.hist(RRT_t)
-    plt.title("RRT run time distribution")
+    plt.title("BiRRT run time distribution")
     plt.ylabel("count")
     plt.xlabel("run time (s)")
-    plt.savefig("fig_3")
+    plt.savefig("fig_4")
     plt.show()
 
     # Execute planned path
