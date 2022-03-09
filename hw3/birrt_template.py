@@ -99,22 +99,18 @@ class BiRRT_Connect(object):
         if not self.goal_config in self.tree_B:
             self.swap_trees()
 
-        # reverse_tree_B = {value:key for (key, value) in self.tree_B.items()}
-
         config = connection_point
-
         while config != self.goal_config:
             path_B.append(config)
             parent_config = self.tree_B[config]
             config = parent_config
+        path_B.append(self.goal_config)
 
         config = connection_point
-
         while config != self.start_config:
             path_A.append(config)
             parent_config = self.tree_A[config]
             config = parent_config
-
         path_A.append(self.start_config)
         path_A.reverse()
 
@@ -138,6 +134,7 @@ class BiRRT_Connect(object):
                     return path
 
                 self.swap_trees()
+
 
 def draw_path(path, robot, joint_idx, start_config, target_link, line_width=25, line_color=(1,0,0)):
 
