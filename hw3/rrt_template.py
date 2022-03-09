@@ -5,7 +5,6 @@ from pybullet_tools.utils import connect, disconnect, wait_if_gui, wait_for_user
 import random
 import time
 
-
 class RRT_Connect(object):
 
     def __init__(self, start_config, goal_config, joint_limits, collision_fn,  eps, goal_bias):
@@ -136,12 +135,10 @@ def shortpath_smoothing(path, collision_fn, num_iter=200):
             new_point = np.array(path[way_points[0]]) + step * diff
             if collision_fn(new_point):
                 break
-
         if step == 1:
             del path[way_points[0]+1:way_points[1]]
 
     return path
-
 
 def tuckarms(robot):
     _joint_names = ['l_shoulder_lift_joint','l_elbow_flex_joint','l_wrist_flex_joint',
@@ -179,21 +176,22 @@ def main(screenshot=False):
     
     goal_config = (0.9,-0.201,-0.55,1.5,0,-0.11,0)
 
-    start_time = time.time()
+
     ### YOUR CODE HERE ###
 
     eps = 0.1
-    goal_bias = 0.1
+    goal_bias = 0.41
     planner = RRT_Connect(start_config, goal_config, joint_limits, collision_fn, eps, goal_bias)
-    path = planner.execute()
-    smoothing = True
 
+    start_time = time.time()
+    path = planner.execute()
     print("Planner run time: ", time.time() - start_time)
 
     # Execute planned path
     target_link = "l_gripper_tool_frame"
-
     draw_path(path, robot, joint_idx, start_config, target_link, line_color=(1,0,0))
+
+    smoothing = True
     if smoothing:
         smoothed_path = shortpath_smoothing(path, collision_fn, num_iter=200)
         draw_path(smoothed_path, robot, joint_idx, start_config, target_link, line_color=(0,0,1))

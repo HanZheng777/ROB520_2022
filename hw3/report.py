@@ -3,11 +3,50 @@ from pybullet_tools.more_utils import load_env, get_collision_fn_PR2, execute_tr
 from pybullet_tools.utils import connect, disconnect, wait_if_gui, wait_for_user, joint_from_name, get_joint_positions, \
     set_joint_positions, get_joint_info, get_link_pose, link_from_name, wait_for_duration
 import random
-from rrt_template import tuckarms, RRT_Connect, draw_path, shortpath_smoothing
+from rrt_template import tuckarms, RRT_Connect, draw_path
 from birrt_template import BiRRT_Connect
 import time
 import pandas as pd
 import matplotlib.pyplot as plt
+
+
+def compute_path_length(path, smoothing):
+    path_length = 0
+    for i in range(len(path) - 1):
+        length = np.sum(np.abs(np.array(path[i + 1]) - np.array(path[i])))
+        path_length += length
+    print("path length:{}; smoothing: {}".format(path_length, smoothing))
+
+    return path_length
+
+
+def shortpath_smoothing(path, collision_fn, num_iter=200):
+
+    # path_length_all = []
+
+    idxs = np.linspace(1, num_iter, num=num_iter)
+    for i in idxs:
+        num_points = len(path)
+        way_points = np.random.randint(num_points, size=2)
+
+        diff = np.array(path[way_points[1]]) - np.array(path[way_points[0]])
+
+        for step in np.linspace(0, 1, num=20):
+            new_point = np.array(path[way_points[0]]) + step * diff
+            if collision_fn(new_point):
+                break
+        if step == 1:
+            del path[way_points[0] + 1:way_points[1]]
+        # path_length_all.append(compute_path_length(path, smoothing=True))
+
+    # plt.plot(idxs, path_length_all)
+    # plt.title("path length vs. smoothing iteration")
+    # plt.xlabel("iteration")
+    # plt.ylabel("path length")
+    # plt.savefig("fig_2")
+    # plt.show()
+
+    return path
 
 def main(screenshot=False):
     # initialize PyBullet
@@ -42,64 +81,60 @@ def main(screenshot=False):
     ### YOUR CODE HERE ###
 
     eps = 0.1
-    goal_bias_list = np.linspace(0.01, 0.96, num=20)
-    time_all = []
-    # for goal_bias in goal_bias_list:
-    #     time_per_bias = []
-    #     for i in range(5):
-    #         planner = RRT_Connect(start_config, goal_config, joint_limits, collision_fn, eps, goal_bias)
-    #         start_time = time.time()
-    #         planner.execute()
-    #         time_cost = time.time() - start_time
-    #         time_per_bias.append(time_cost)
-    #     avg_time_per_bias = np.mean(time_per_bias)
-    #     time_all.append(avg_time_per_bias)
+    goal_bias = 0.31
 
-    time_all = [83.28108048439026,
-                120.112173557281494,
-                162.522637128829956,
-                100.187344789505,
-                88.37112803459168,
-                74.4401113986969,
-                106.40287523269653,
-                66.68984088897705,
-                43.7865,
-                52.9875,
-                66.7965,
-                43.975335,
-                38.827,
-                80.9282,
-                113.228374,
-                160.73649,
-                233.28474,
-                359.38347,
-                488.28324,
-                685.384721,
-                ]
+    # run = np.linspace(1,30, num=30)
+    RRT_t = []
+    smoothing_t = []
+    number_nodes_sampled = []
+    unsmoothed_l = []
+    smoothed_l = []
 
-    plt.plot(goal_bias_list, time_all)
-    plt.xlabel("goal bias")
-    plt.ylabel("avg running time (s)")
-    plt.title("running time vs. goal bias")
-    plt.savefig("fig_1")
+    for i in range(30):
+        planner = RRT_Connect(start_config, goal_config, joint_limits, collision_fn, eps, goal_bias)
+        start_time = time.time()
+        path = planner.execute()
+        RRT_t.append(time.time()-start_time)
+        unsmoothed_l.append(compute_path_length(path, smoothing=False))
+
+        number_nodes_sampled.append(len(planner.tree))
+
+        start_time = time.time()
+        smoothed_path = shortpath_smoothing(path, collision_fn, num_iter=200)
+        smoothing_t.append(time.time() - start_time)
+        smoothed_l.append(compute_path_length(smoothed_path, smoothing=True))
+
+    data = {"RRT_t": RRT_t,
+            "unsmoothed_l": unsmoothed_l,
+            "number_nodes_sampled": number_nodes_sampled,
+            "smoothing_t": smoothing_t,
+            "smoothed_l": smoothed_l, }
+    df = pd.DataFrame(data)
+    df.to_csv("RRT_data")
+
+    plt.hist(RRT_t)
+    plt.title("RRT run time distribution")
+    plt.ylabel("count")
+    plt.xlabel("run time (s)")
+    plt.savefig("fig_3")
     plt.show()
 
-
-        # print("Planner run time: ")
-
     # Execute planned path
-    target_link = "l_gripper_tool_frame"
-    # smoothing = False
-    # draw_path(path, robot, joint_idx, start_config, target_link, line_color=(1 ,0 ,0))
+    # target_link = "l_gripper_tool_frame"
+    # draw_path(path, robot, joint_idx, start_config, target_link, line_color=(1, 0, 0))
+    #
+    # smoothing = True
     # if smoothing:
     #     smoothed_path = shortpath_smoothing(path, collision_fn, num_iter=200)
-    #     draw_path(smoothed_path, robot, joint_idx, start_config, target_link, line_color=(0 ,0 ,1))
+    #     draw_path(smoothed_path, robot, joint_idx, start_config, target_link, line_color=(0, 0, 1))
 
     ######################
     # execute_trajectory(robot, joint_idx, path, sleep=0.1)
     # Keep graphics window opened
     wait_if_gui()
     disconnect()
+
+
 
 if __name__ == '__main__':
     main()
