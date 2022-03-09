@@ -180,7 +180,7 @@ def main(screenshot=False):
     ### YOUR CODE HERE ###
 
     eps = 0.1
-    goal_bias = 0.41
+    goal_bias = 0.31
     planner = RRT_Connect(start_config, goal_config, joint_limits, collision_fn, eps, goal_bias)
 
     start_time = time.time()
