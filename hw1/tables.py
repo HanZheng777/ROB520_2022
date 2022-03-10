@@ -14,14 +14,14 @@ def main(screenshot=False):
         table_poses.append(get_pose(obstacles["ikeatable{}".format(i+1)]))
     # assign new poses
 
-    set_pose(obstacles["ikeatable1"], ((-1.9, 0.1, 0.74), (0.0, 0.0, 0.7, 0.707)))
-    set_pose(obstacles["ikeatable2"], ((-3.5, 0.8, 0.74), (0.0, 0.0, 0.0, 0.707)))
+#     set_pose(obstacles["ikeatable1"], ((-1.9, 0.1, 0.74), (0.0, 0.0, 0.7, 0.707)))
+#     set_pose(obstacles["ikeatable2"], ((-3.5, 0.8, 0.74), (0.0, 0.0, 0.0, 0.707)))
 
-    set_pose(obstacles["ikeatable3"], ((0.2, -0.8, 0.74), (0.0, 0.0, 0.1, 0.707)))
-    set_pose(obstacles["ikeatable4"], ((-1.7, -0.5, 0.74), (0.0, 0.0, 0.7, 0.707)))
+#     set_pose(obstacles["ikeatable3"], ((0.2, -0.8, 0.74), (0.0, 0.0, 0.1, 0.707)))
+#     set_pose(obstacles["ikeatable4"], ((-1.7, -0.5, 0.74), (0.0, 0.0, 0.7, 0.707)))
 
-    set_pose(obstacles["ikeatable5"], ((1.6, -0.5, 0.74), (0.0, 0.0, 0.0, 0.707)))
-    set_pose(obstacles["ikeatable6"], ((3.5, -1.2, 0.74), (0.0, 0.0, 0.0, 0.707)))
+#     set_pose(obstacles["ikeatable5"], ((1.6, -0.5, 0.74), (0.0, 0.0, 0.0, 0.707)))
+#     set_pose(obstacles["ikeatable6"], ((3.5, -1.2, 0.74), (0.0, 0.0, 0.0, 0.707)))
 
 
     wait_if_gui()
