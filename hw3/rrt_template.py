@@ -22,10 +22,10 @@ class RRT_Connect(object):
         self.tree = {start_config: start_config}
 
 
-    def find_nearest(self, q_rand):
+    def find_nearest(self, q):
 
         nodes = np.array(list(self.tree.keys()))
-        diffs = nodes - np.array(q_rand)
+        diffs = nodes - np.array(q)
         distance = np.linalg.norm(diffs, axis=1)
         indx = np.argmin(distance)
         q_near = tuple(nodes[indx])
@@ -33,13 +33,13 @@ class RRT_Connect(object):
         return q_near
 
 
-    def connect_tree(self, q_rand):
+    def connect_tree(self, q):
 
-        q_near = self.find_nearest(q_rand)
+        q_near = self.find_nearest(q)
 
         while True:
 
-            direction = np.array(q_rand) - np.array(q_near)
+            direction = np.array(q) - np.array(q_near)
             direction_length = np.linalg.norm(direction)
             if direction_length <= self.eps:
                 step = direction
@@ -53,7 +53,7 @@ class RRT_Connect(object):
                 flag = "Trapped"
             else:
                 self.tree[q_new] = q_near
-                if q_new == q_rand:
+                if q_new == q:
                     flag = "Reached"
                 else:
                     flag = "Advanced"

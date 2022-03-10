@@ -2,14 +2,15 @@ import numpy as np
 from pybullet_tools.more_utils import load_env, get_collision_fn_PR2, execute_trajectory, draw_line
 from pybullet_tools.utils import connect, disconnect, wait_if_gui, wait_for_user, joint_from_name, get_joint_positions, \
     set_joint_positions, get_joint_info, get_link_pose, link_from_name, wait_for_duration
+from rrt_template import RRT_Connect, draw_path, tuckarms, shortpath_smoothing
 import random
 import time
 import copy
 
 
-class BiRRT_Connect(object):
+class BiRRT_Connect(RRT_Connect):
 
-    def __init__(self, start_config, goal_config, joint_limits, collision_fn, eps):
+    def __init__(self, start_config, goal_config, joint_limits, collision_fn, eps, goal_bias=0):
 
         self.start_config = start_config
         self.goal_config = goal_config
@@ -18,8 +19,7 @@ class BiRRT_Connect(object):
         self.collision_fn = collision_fn
 
         self.eps = eps
-        # self.goal_bias = goal_bias
-
+        self.goal_bias = goal_bias
 
         self.tree_A = {start_config: None}
         self.tree_B = {goal_config: None}
@@ -73,24 +73,6 @@ class BiRRT_Connect(object):
                 return flag, q_new
 
 
-    def sample(self):
-
-        # mask = np.random.rand()
-        #
-        # if mask <= self.goal_bias:
-        #     q_rand = self.goal_config
-        # else:
-        q_rand = []
-        for i in self.joint_limits:
-            joint_s = random.uniform(self.joint_limits[i][0], self.joint_limits[i][1])
-            q_rand.append(round(joint_s, 3))
-
-        q_rand = np.around(q_rand, decimals=3)
-        q_rand = tuple(q_rand)
-
-        return q_rand
-
-
     def reconstruct_path(self, connection_point):
 
         path_A = []
@@ -136,46 +118,6 @@ class BiRRT_Connect(object):
                 self.swap_trees()
 
 
-def draw_path(path, robot, joint_idx, start_config, target_link, line_width=25, line_color=(1,0,0)):
-
-    target_link_idx = link_from_name(robot, target_link)
-
-    set_joint_positions(robot, joint_idx, start_config)
-    end_effector_path = [get_link_pose(robot, target_link_idx)[0]]
-
-    for config in path:
-        set_joint_positions(robot, joint_idx, config)
-        wait_for_duration(0.1)
-        end_effector_path.append(get_link_pose(robot, target_link_idx)[0])
-        draw_line(end_effector_path[-2], end_effector_path[-1], line_width, line_color)
-
-
-def shortpath_smoothing(path, collision_fn, num_iter=200):
-
-    for i in range(num_iter):
-        num_points = len(path)
-        way_points = np.random.randint(num_points, size=2)
-
-        diff = np.array(path[way_points[1]]) - np.array(path[way_points[0]])
-
-        for step in np.linspace(0, 1, num=20):
-            new_point = np.array(path[way_points[0]]) + step * diff
-            if collision_fn(new_point):
-                break
-
-        if step == 1:
-            del path[way_points[0]+1:way_points[1]]
-
-    return path
-
-
-def tuckarms(robot):
-    _joint_names = ['l_shoulder_lift_joint','l_elbow_flex_joint','l_wrist_flex_joint',
-                    'r_shoulder_lift_joint','r_elbow_flex_joint','r_wrist_flex_joint']
-    joint_idx = [joint_from_name(robot, jn) for jn in _joint_names]
-    set_joint_positions(robot, joint_idx, [1.29023451,-2.32099996,-0.69800004,1.27843491,-2.32100002,-0.69799996])
-
-
 def main(screenshot=False):
     # initialize PyBullet
     connect(use_gui=True)
@@ -209,7 +151,6 @@ def main(screenshot=False):
     ### YOUR CODE HERE ###
 
     eps = 0.1
-    # goal_bias = 0.4
     planner = BiRRT_Connect(start_config, goal_config, joint_limits, collision_fn, eps)
     path = planner.execute()
     smoothing = True
